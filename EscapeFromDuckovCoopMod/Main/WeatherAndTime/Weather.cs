@@ -48,6 +48,32 @@ public class Weather
     private bool IsServer => Service != null && Service.IsServer;
     private bool networkStarted => Service != null && Service.networkStarted;
 
+    public void Reset()
+    {
+        _lootSnapshotBuffer.Clear();
+        _doorSnapshotBuffer.Clear();
+        _pendingDoorStates.Clear();
+
+        _clockTimer = 0f;
+        _weatherTimer = 0f;
+        _lootSyncTimer = 0f;
+        _clientResyncTimer = 0f;
+        _clientClockSynced = false;
+        _clientWeatherSynced = false;
+        _hasPendingWeather = false;
+        _pendingWeather = default;
+
+        LastStormSnapshot = StormSnapshot.Empty;
+        _lastDay = long.MinValue;
+        _lastSeconds = double.MinValue;
+        _lastTimeScale = float.NaN;
+        _lastSeed = int.MinValue;
+        _lastForceWeather = false;
+        _lastForceWeatherValue = int.MinValue;
+        _lastCurrentWeather = int.MinValue;
+        _lastStormLevel = byte.MaxValue;
+    }
+
     public void Server_Update(float deltaTime)
     {
         if (!IsServer || !networkStarted) return;

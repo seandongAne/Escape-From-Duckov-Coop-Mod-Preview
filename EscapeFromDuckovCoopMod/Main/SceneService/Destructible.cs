@@ -579,4 +579,12 @@ public class Destructible
         if (IsServer) // ⇦ 这里用你项目中判断“是否为主机”的字段/属性；若无则换成你原有判断
             ScanAndMarkInitiallyDeadDestructibles();
     }
+
+    public void Reset()
+    {
+        _deadDestructibleIds?.Clear();
+        _dangerDestructibleIds?.Clear();
+        _serverDestructibles?.Clear();
+        _clientDestructibles?.Clear();
+    }
 }

@@ -89,6 +89,44 @@ public class SceneNet : MonoBehaviour
         Instance = this;
     }
 
+    public void ResetSessionState()
+    {
+        _sceneReadySidSent = null;
+        sceneVoteActive = false;
+        sceneTargetId = null;
+        sceneCurtainGuid = null;
+        sceneNotifyEvac = false;
+        sceneSaveToFile = true;
+        allowLocalSceneLoad = false;
+        sceneUseLocation = false;
+        sceneLocationName = null;
+        localReady = false;
+
+        _cliSceneGateReleased = false;
+        _cliGateSid = null;
+        _srvGateSid = null;
+        IsMapSelectionEntry = false;
+        IsDoteleportMap = false;
+        _localSceneLoadLaunched = false;
+        _srvPendingSceneLoad = false;
+        _srvPendingSceneLoadTime = 0f;
+        _srvPendingBeginLoad = false;
+        _srvPendingBeginLoadTime = 0f;
+        _srvLoadInProgress = false;
+        _srvSceneGateOpen = false;
+
+        _cliLastSceneIdByPlayer.Clear();
+        _srvGateReadyPids.Clear();
+        sceneParticipantIds.Clear();
+        sceneReady.Clear();
+        _cliGateDeadline = 0f;
+        _cliForceSpawnAtHost = false;
+        _cliHostReadyReceived = false;
+        _cliPendingPostLoadSnap = false;
+        _cliHostSpawnPosition = Vector3.zero;
+        _cliHostSpawnRotation = Quaternion.identity;
+    }
+
     public void TrySendSceneReadyOnce()
     {
         if (!networkStarted) return;

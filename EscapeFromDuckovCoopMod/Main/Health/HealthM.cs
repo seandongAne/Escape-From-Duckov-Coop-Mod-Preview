@@ -269,7 +269,7 @@ public class HealthM : MonoBehaviour
 
         if (!Server_ValidatePlayerDamageRequest(sender, message, out var reason))
         {
-            Server_LogDamageDeny(sender, message.TargetPlayerId, reason);
+            Server_LogDamageDeny(sender, message.TargetPlayerId, message.AttackerPlayerId, reason);
             return;
         }
 
@@ -345,16 +345,40 @@ public class HealthM : MonoBehaviour
             return false;
         }
 
-        var samePlayer = string.Equals(senderId, message.TargetPlayerId, StringComparison.OrdinalIgnoreCase);
-        if (!samePlayer && COOPManager.FriendlyFire != null && !COOPManager.FriendlyFire.FriendlyFirePlayersEnabled)
+        var attackerPlayerId = message.AttackerPlayerId ?? string.Empty;
+        var attackerIsPlayer = !string.IsNullOrEmpty(attackerPlayerId);
+        var attackerIsHost = false;
+        NetPeer attackerPeer = null;
+
+        if (attackerIsPlayer)
         {
-            reason = "friendly_fire_disabled";
-            return false;
+            if (attackerPlayerId.Length > SERVER_MAX_PLAYER_ID_LENGTH)
+            {
+                reason = "bad_attacker";
+                return false;
+            }
+
+            attackerIsHost = service.IsSelfId(attackerPlayerId);
+            if (!attackerIsHost && !service.TryGetPeerByPlayerId(attackerPlayerId, out attackerPeer))
+            {
+                reason = "unknown_attacker";
+                return false;
+            }
+
+            var sameAttackerTarget = string.Equals(attackerPlayerId, message.TargetPlayerId, StringComparison.OrdinalIgnoreCase);
+            if (!sameAttackerTarget && COOPManager.FriendlyFire != null && !COOPManager.FriendlyFire.FriendlyFirePlayersEnabled)
+            {
+                reason = "friendly_fire_disabled";
+                return false;
+            }
         }
 
-        if (Server_TryGetPlayerScene(sender, false, out var senderScene) &&
+        var authorityPeer = attackerIsPlayer ? attackerPeer : sender;
+        var authorityIsHost = attackerIsPlayer && attackerIsHost;
+
+        if (Server_TryGetPlayerScene(authorityPeer, authorityIsHost, out var authorityScene) &&
             Server_TryGetPlayerScene(targetPeer, targetIsHost, out var targetScene) &&
-            !Spectator.AreSameMap(senderScene, targetScene))
+            !Spectator.AreSameMap(authorityScene, targetScene))
         {
             reason = "scene_mismatch";
             return false;
@@ -363,21 +387,22 @@ public class HealthM : MonoBehaviour
         if (!Server_ValidateDamagePayload(message.Damage, out reason))
             return false;
 
-        if (Server_TryGetPlayerPosition(sender, false, out var senderPos) &&
+        if (Server_TryGetPlayerPosition(authorityPeer, authorityIsHost, out var authorityPos) &&
             Server_TryGetPlayerPosition(targetPeer, targetIsHost, out var targetPos))
         {
-            var distanceSqr = (senderPos - targetPos).sqrMagnitude;
+            var distanceSqr = (authorityPos - targetPos).sqrMagnitude;
             if (distanceSqr > SERVER_DAMAGE_MAX_RANGE_SQR)
             {
                 reason = $"too_far:{Mathf.Sqrt(distanceSqr):0.0}m";
                 return false;
             }
 
-            if (!message.Damage.IsExplosion && distanceSqr > SERVER_DAMAGE_CLOSE_RANGE_SQR)
+            if (attackerIsPlayer && !message.Damage.IsExplosion && distanceSqr > SERVER_DAMAGE_CLOSE_RANGE_SQR)
             {
                 var weapon = COOPManager.WeaponHandle;
-                if (weapon == null ||
-                    !weapon.Server_HasRecentAttack(sender, message.Damage.WeaponItemId, senderPos, targetPos, false))
+                if (authorityIsHost ||
+                    weapon == null ||
+                    !weapon.Server_HasRecentAttack(authorityPeer, message.Damage.WeaponItemId, authorityPos, targetPos, false))
                 {
                     reason = "no_recent_attack";
                     return false;
@@ -507,10 +532,11 @@ public class HealthM : MonoBehaviour
         return IsFinite(value) && Mathf.Abs(value) <= SERVER_MAX_DAMAGE_FIELD_ABS;
     }
 
-    private static void Server_LogDamageDeny(NetPeer sender, string targetPlayerId, string reason)
+    private static void Server_LogDamageDeny(NetPeer sender, string targetPlayerId, string attackerPlayerId, string reason)
     {
         var peerText = sender != null ? sender.EndPoint.ToString() : "null";
-        Debug.LogWarning($"[DAMAGE_AUTH] deny peer={peerText}, target={targetPlayerId}, reason={reason}");
+        var attackerText = string.IsNullOrEmpty(attackerPlayerId) ? "unknown" : attackerPlayerId;
+        Debug.LogWarning($"[DAMAGE_AUTH] deny peer={peerText}, attacker={attackerText}, target={targetPlayerId}, reason={reason}");
     }
 
     public void Client_HandlePlayerHealthBroadcast(PlayerHealthBroadcastRpc message)

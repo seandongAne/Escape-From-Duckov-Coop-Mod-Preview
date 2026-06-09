@@ -287,7 +287,8 @@ namespace EscapeFromDuckovCoopMod
             if (_currentLobbyId != CSteamID.Nil)
             {
                 Debug.Log($"[SteamLobby] 离开Lobby: {_currentLobbyId}");
-                SteamMatchmaking.LeaveLobby(_currentLobbyId);
+                if (SteamManager.Initialized)
+                    SteamMatchmaking.LeaveLobby(_currentLobbyId);
                 _currentLobbyId = CSteamID.Nil;
                 _isHost = false;
                 _lobbyMembersCache.Clear();  // 清空成员缓存
@@ -305,6 +306,22 @@ namespace EscapeFromDuckovCoopMod
                 return;
 
             EndJoin(false, string.IsNullOrEmpty(reason) ? "[STEAM_JOIN] lobby join cancelled" : reason);
+        }
+
+        public void ResetSessionState(bool leaveLobby, string reason)
+        {
+            if (leaveLobby)
+            {
+                LeaveLobby();
+                _lobbyMetadata.Clear();
+                _availableLobbies.Clear();
+                _lobbyMembersCache.Clear();
+                LobbyListUpdated?.Invoke(_availableLobbies);
+            }
+            else
+            {
+                CancelPendingJoin(reason);
+            }
         }
 
         public void InviteFriend()

@@ -109,6 +109,7 @@ public sealed class ItemNet
         _snapshotResetPending = false;
         _snapshotInProgress = false;
         _pendingByToken.Clear();
+        _pendingPickups.Clear();
         _nextDropId = 1;
     }
 

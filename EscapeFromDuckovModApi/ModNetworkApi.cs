@@ -162,6 +162,20 @@ public static class ModNetworkApi
         PeerDisconnected?.Invoke(peer);
     }
 
+    public static void ResetSessionState()
+    {
+        lock (_lock)
+        {
+            _pendingMessages.Clear();
+            _nextReplayRequestTime.Clear();
+            _lastSentToPeer.Clear();
+            _lastSentToServer.Clear();
+            _lastBroadcastFromServer.Clear();
+            _nextDropLogTime = 0f;
+            _droppedSinceLastLog = 0;
+        }
+    }
+
     private static byte[] BuildPayload(Action<NetDataWriter> builder)
     {
         var writer = RpcWriterPool.Rent();

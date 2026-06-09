@@ -89,6 +89,7 @@ public class ModBehaviourF : MonoBehaviour
 
     private bool isinit; // 判断玩家装备slot监听初始哈的
 
+    private bool _eventsSubscribed;
     private bool isinit2;
     private NetService Service => NetService.Instance;
     public bool IsServer => Service != null && Service.IsServer;
@@ -121,13 +122,23 @@ public class ModBehaviourF : MonoBehaviour
 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("[NET_STATE] duplicate ModBehaviourF component ignored");
+            enabled = false;
+            Destroy(this);
+            return;
+        }
+
         Debug.Log("ModBehaviour Awake");
         Instance = this;
         PerformanceDiagnostics.Instance.Reset();
         NetDiagnostics.Instance.Reset();
 
-        gameObject.AddComponent<DamageStatsTracker>();
-        gameObject.AddComponent<DamageStatsUI>();
+        if (!gameObject.GetComponent<DamageStatsTracker>())
+            gameObject.AddComponent<DamageStatsTracker>();
+        if (!gameObject.GetComponent<DamageStatsUI>())
+            gameObject.AddComponent<DamageStatsUI>();
     }
 
     private void Update()
@@ -422,6 +433,13 @@ public class ModBehaviourF : MonoBehaviour
 
     private void OnEnable()
     {
+        if (Instance != this)
+            return;
+
+        if (_eventsSubscribed)
+            return;
+
+        _eventsSubscribed = true;
         SceneManager.sceneLoaded += OnSceneLoaded_IndexDestructibles;
         SceneManager.sceneUnloaded += OnSceneUnloaded_ClearRegistries;
         LevelManager.OnAfterLevelInitialized += LevelManager_OnAfterLevelInitialized;
@@ -434,10 +452,14 @@ public class ModBehaviourF : MonoBehaviour
 
     private void OnDisable()
     {
+        if (!_eventsSubscribed)
+            return;
+
+        _eventsSubscribed = false;
         SceneManager.sceneLoaded -= OnSceneLoaded_IndexDestructibles;
         SceneManager.sceneUnloaded -= OnSceneUnloaded_ClearRegistries;
         LevelManager.OnLevelInitialized -= OnLevelInitialized_IndexDestructibles;
-        //   LevelManager.OnAfterLevelInitialized -= _OnAfterLevelInitialized_ServerGate;
+        LevelManager.OnAfterLevelInitialized -= LevelManager_OnAfterLevelInitialized;
 
         SceneManager.sceneLoaded -= SceneManager_sceneLoaded;
         LevelManager.OnLevelInitialized -= LevelManager_OnLevelInitialized;
@@ -445,7 +467,12 @@ public class ModBehaviourF : MonoBehaviour
 
     private void OnDestroy()
     {
-        NetService.Instance.StopNetwork();
+        OnDisable();
+        if (Instance == this)
+        {
+            NetService.Instance?.StopNetwork();
+            Instance = null;
+        }
     }
 
     private void LevelManager_OnAfterLevelInitialized()

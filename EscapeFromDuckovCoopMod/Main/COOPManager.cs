@@ -42,10 +42,18 @@ public class COOPManager
     public static Buff_ Buff;
     public static WeaponRequest WeaponRequest;
     public static AISyncService AI;
+    private static bool _initialized;
     private NetService Service => NetService.Instance;
 
     public static void InitManager()
     {
+        if (_initialized)
+        {
+            Debug.Log("[NET_STATE] COOPManager.InitManager reentry; reset session state instead");
+            ResetSessionState("init_manager_reentry");
+            return;
+        }
+
         HostPlayer_Apply = new HostPlayerApply();
         ClientPlayer_Apply = new ClientPlayerApply();
         LootNet = new LootNet();
@@ -64,6 +72,44 @@ public class COOPManager
         Buff = new Buff_();
         WeaponRequest = new WeaponRequest();
         AI = new AISyncService();
+        _initialized = true;
+        Debug.Log("[NET_STATE] COOPManager initialized");
+    }
+
+    public static void ResetSessionState(string reason = "session_reset")
+    {
+        Debug.Log($"[NET_STATE] reset coop session state: {reason}");
+
+        TryReset("SceneNet", () => SceneNet.Instance?.ResetSessionState());
+        TryReset("AI", () => AI?.Reset());
+        TryReset("LootNet", () => LootNet?.Reset());
+        TryReset("ItemNet", () => ItemNet?.Reset());
+        TryReset("ExitSync", () => ExitSync?.Reset());
+        TryReset("ExplosiveBarrels", () => ExplosiveBarrels?.Reset());
+        TryReset("GrenadeM", () => GrenadeM?.Reset());
+        TryReset("Destructible", () => destructible?.Reset());
+        TryReset("FriendlyFire", () => FriendlyFire?.ResetSessionState());
+        TryReset("Weather", () => Weather?.Reset());
+        TryReset("WeaponHandle", () => WeaponHandle?.ResetSessionState());
+        TryReset("ModNetworkApi", ModNetworkApi.ResetSessionState);
+
+        CoopTool._cliPendingRemoteHp.Clear();
+        CoopTool._cliPendingProxyBuffs.Clear();
+        CustomFace._cliPendingFace.Clear();
+        SceneM._srvPeerScene.Clear();
+        CoopSyncDatabase.AI.Clear();
+    }
+
+    private static void TryReset(string component, Action reset)
+    {
+        try
+        {
+            reset?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[NET_STATE] reset {component} failed: {ex}");
+        }
     }
 
 
