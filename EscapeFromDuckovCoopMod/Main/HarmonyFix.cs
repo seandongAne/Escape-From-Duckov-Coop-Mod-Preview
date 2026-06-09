@@ -82,7 +82,8 @@ internal static class Patch_ServerForwardRemotePlayerDamage
             var request = new PlayerDamageRequestRpc
             {
                 TargetPlayerId = targetId,
-                Damage = DamageForwardPayload.FromDamageInfo(__0)
+                Damage = DamageForwardPayload.FromDamageInfo(__0),
+                AttackerPlayerId = ResolveAttackerPlayerId(service, __0)
             };
 
             CoopTool.SendRpc(in request);
@@ -117,6 +118,19 @@ internal static class Patch_ServerForwardRemotePlayerDamage
 
         CoopTool.SendRpcTo(peer, in rpc);
         return false;
+    }
+
+    private static string ResolveAttackerPlayerId(NetService service, DamageInfo damage)
+    {
+        var attacker = damage.fromCharacter;
+        if (!attacker || service == null)
+            return string.Empty;
+
+        var main = CharacterMainControl.Main;
+        if (main && attacker == main)
+            return service.GetPlayerId(null) ?? string.Empty;
+
+        return service.TryGetPlayerId(attacker, out var playerId) ? playerId ?? string.Empty : string.Empty;
     }
 }
 
