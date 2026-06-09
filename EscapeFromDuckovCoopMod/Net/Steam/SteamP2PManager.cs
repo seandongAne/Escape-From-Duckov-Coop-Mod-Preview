@@ -303,11 +303,45 @@ public class SteamP2PManager : MonoBehaviour
     {
         _acceptedSessions.Remove(remoteSteamID);
     }
+    public void ResetSessionState()
+    {
+        if (SteamManager.Initialized)
+        {
+            foreach (var steamId in _acceptedSessions)
+            {
+                try
+                {
+                    SteamNetworking.CloseP2PSessionWithUser(steamId);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[NET_STATE] close Steam P2P session failed for {steamId}: {ex}");
+                }
+            }
+        }
+
+        _acceptedSessions.Clear();
+        while (_receivedPackets.TryDequeue(out _))
+        {
+        }
+
+        _packetsSent = 0;
+        _packetsReceived = 0;
+        _bytesSent = 0;
+        _bytesReceived = 0;
+        PacketsDropped = 0;
+        SendFailures = 0;
+        MaxQueueDepth = 0;
+        Debug.Log("[NET_STATE] Steam P2P session state reset");
+    }
     public bool AcceptP2PSession(CSteamID remoteSteamID)
     {
         if (!SteamManager.Initialized)
             return false;
-        return SteamNetworking.AcceptP2PSessionWithUser(remoteSteamID);
+        var accepted = SteamNetworking.AcceptP2PSessionWithUser(remoteSteamID);
+        if (accepted)
+            _acceptedSessions.Add(remoteSteamID);
+        return accepted;
     }
     public bool CloseP2PSession(CSteamID remoteSteamID)
     {
@@ -330,6 +364,7 @@ public class SteamP2PManager : MonoBehaviour
         Debug.Log($"[SteamP2P] 收到P2P会话请求 from {request.m_steamIDRemote}");
         if (SteamNetworking.AcceptP2PSessionWithUser(request.m_steamIDRemote))
         {
+            _acceptedSessions.Add(request.m_steamIDRemote);
             Debug.Log($"[SteamP2P] 已接受P2P会话 from {request.m_steamIDRemote}");
             byte[] handshake = System.Text.Encoding.UTF8.GetBytes("HANDSHAKE");
             for (int i = 0; i < 3; i++)

@@ -46,6 +46,13 @@ public sealed class FriendlyFireSync
         TryApplyPending();
     }
 
+    public void ResetSessionState()
+    {
+        // 设置值来自配置，跨会话保留；只清掉本轮网络的待广播/待应用状态。
+        _pendingApply = false;
+        ApplyTeamToExistingPlayers();
+    }
+
     public void Client_HandleState(PlayerFriendlyFireStateRpc message)
     {
         FriendlyFirePlayersEnabled = message.Enabled;

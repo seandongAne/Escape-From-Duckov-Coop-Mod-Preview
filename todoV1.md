@@ -73,13 +73,15 @@
 
 任务：
 
-- [ ] `ModBehaviour.OnEnable()` 增加全局幂等保护，避免重复创建持久对象
-- [ ] `COOPManager.InitManager()` 增加重复初始化保护或显式 Reset 语义
-- [ ] `StopNetwork()` 清理 Scene、AI、Loot、Mod API、FriendlyFire、Weather、ExitSync 等 per-session 状态
-- [ ] Direct 与 SteamP2P 模式切换时明确离开 lobby、清 endpoint mapper、清 pending join
-- [ ] 断线重连时清理本地 remote proxy、AI replica、loot viewer、scene ready 状态
-- [ ] 启动/停止日志统一走 `[NET_STATE]`，只打关键状态变化
-- [ ] 给“重载 mod / 回到主菜单 / 再进地图 / 再联机”写一份手动测试脚本
+本轮进度（P2 生命周期清理）：已实现启动幂等、集中 session reset、Direct/SteamP2P 切换清理、客户端断线重连清理与生命周期 smoke 文档。双客户端和 Steam lobby 实测仍需在合并前按 `docs/lifecycle-smoke-test.md` 执行。
+
+- [x] `ModBehaviour.OnEnable()` 增加全局幂等保护，避免重复创建持久对象
+- [x] `COOPManager.InitManager()` 增加重复初始化保护或显式 Reset 语义
+- [x] `StopNetwork()` 清理 Scene、AI、Loot、Mod API、FriendlyFire、Weather、ExitSync 等 per-session 状态
+- [x] Direct 与 SteamP2P 模式切换时明确离开 lobby、清 endpoint mapper、清 pending join
+- [x] 断线重连时清理本地 remote proxy、AI replica、loot viewer、scene ready 状态
+- [x] 启动/停止日志统一走 `[NET_STATE]`，只打关键状态变化
+- [x] 给“重载 mod / 回到主菜单 / 再进地图 / 再联机”写一份手动测试脚本
 
 验收标准：
 

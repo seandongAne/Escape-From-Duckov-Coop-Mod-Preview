@@ -55,6 +55,16 @@ public class WeaponHandle
     private Dictionary<NetPeer, PlayerStatus> playerStatuses => Service?.playerStatuses;
     private Dictionary<string, GameObject> clientRemoteCharacters => Service?.clientRemoteCharacters;
 
+    public void ResetSessionState()
+    {
+        _serverRecentAttacks.Clear();
+        _distCacheByWeaponType.Clear();
+        _explDamageCacheByWeaponType.Clear();
+        _explRangeCacheByWeaponType.Clear();
+        _projectilePrefabCache.Clear();
+        _speedCacheByWeaponType.Clear();
+    }
+
     private void BroadcastProjectileEvent(in WeaponFireEventRpc evt, NetPeer excludePeer = null)
     {
         if (!IsServer || !networkStarted)
@@ -302,6 +312,12 @@ public class WeaponHandle
             _serverRecentAttacks.Remove(sender);
             return false;
         }
+
+        if (!attack.IsMelee && (weaponItemId <= 0 || attack.WeaponTypeId <= 0 || weaponItemId != attack.WeaponTypeId))
+            return false;
+
+        if (attack.IsMelee && weaponItemId > 0 && attack.WeaponTypeId > 0 && weaponItemId != attack.WeaponTypeId)
+            return false;
 
         if (!IsFinite(targetPos))
             return false;

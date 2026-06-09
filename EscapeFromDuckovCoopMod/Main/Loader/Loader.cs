@@ -18,45 +18,51 @@ namespace EscapeFromDuckovCoopMod;
 
 public class ModBehaviour : Duckov.Modding.ModBehaviour
 {
+    private static bool _harmonyPatched;
     public Harmony Harmony;
 
     public void OnEnable()
     {
-        Harmony = new Harmony("DETF_COOP");
-        Harmony.PatchAll();
+        if (!_harmonyPatched)
+        {
+            Harmony = new Harmony("DETF_COOP");
+            Harmony.PatchAll();
+            _harmonyPatched = true;
+        }
+        else
+        {
+            Debug.Log("[NET_STATE] ModBehaviour.OnEnable ignored duplicate Harmony patch request");
+        }
 
-        var go = new GameObject("COOP_MOD_1");
-        DontDestroyOnLoad(go);
+        CoopLocalization.Initialize();
 
-        go.AddComponent<NetService>();
+        var go = GetOrCreateRoot("COOP_MOD_1");
+        EnsureComponent<NetService>(go);
         COOPManager.InitManager();
-        go.AddComponent<ModBehaviourF>();
+        EnsureComponent<ModBehaviourF>(go);
         Loader();
     }
 
     public void Loader()
     {
-        CoopLocalization.Initialize();
+        var go = GetOrCreateRoot("COOP_MOD_");
 
-        var go = new GameObject("COOP_MOD_");
-        DontDestroyOnLoad(go);
-
-        go.AddComponent<SteamP2PLoader>();
-        go.AddComponent<Send_ClientStatus>();
-        go.AddComponent<HealthM>();
-        go.AddComponent<LocalPlayerManager>();
-        go.AddComponent<SendLocalPlayerStatus>();
-        go.AddComponent<SendLocalVehicleStatus>();
-        go.AddComponent<Spectator>();
-        go.AddComponent<DeadLootBox>();
-        go.AddComponent<LootManager>();
-        go.AddComponent<SceneNet>();
-        go.AddComponent<MModUI>();
-        go.AddComponent<CoopAISettings>();
-        go.AddComponent<AISyncSettingsUI>();
-        go.AddComponent<CoopLootSettings>();
-        go.AddComponent<WaitingSynchronizationUI>();
-        go.AddComponent<VersionOverlayTMP>();
+        EnsureComponent<SteamP2PLoader>(go);
+        EnsureComponent<Send_ClientStatus>(go);
+        EnsureComponent<HealthM>(go);
+        EnsureComponent<LocalPlayerManager>(go);
+        EnsureComponent<SendLocalPlayerStatus>(go);
+        EnsureComponent<SendLocalVehicleStatus>(go);
+        EnsureComponent<Spectator>(go);
+        EnsureComponent<DeadLootBox>(go);
+        EnsureComponent<LootManager>(go);
+        EnsureComponent<SceneNet>(go);
+        EnsureComponent<MModUI>(go);
+        EnsureComponent<CoopAISettings>(go);
+        EnsureComponent<AISyncSettingsUI>(go);
+        EnsureComponent<CoopLootSettings>(go);
+        EnsureComponent<WaitingSynchronizationUI>(go);
+        EnsureComponent<VersionOverlayTMP>(go);
         CoopTool.Init();
 
         DeferredInit();
@@ -95,9 +101,25 @@ public class ModBehaviour : Duckov.Modding.ModBehaviour
         }
     }
 
+    private static GameObject GetOrCreateRoot(string name)
+    {
+        var go = GameObject.Find(name);
+        if (go != null)
+            return go;
 
+        go = new GameObject(name);
+        DontDestroyOnLoad(go);
+        Debug.Log($"[NET_STATE] created persistent root '{name}'");
+        return go;
+    }
 
+    private static T EnsureComponent<T>(GameObject go) where T : Component
+    {
+        // 热重载或重复启用时只补缺失组件，避免把全局服务堆成多份。
+        var component = go.GetComponent<T>();
+        if (component != null)
+            return component;
 
-
-
+        return go.AddComponent<T>();
+    }
 }
